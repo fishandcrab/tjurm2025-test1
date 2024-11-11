@@ -40,6 +40,7 @@ void my_strcat(char *str_1, char *str_2) {
 
 }
 // 练习3，实现库函数strstr
+#include <cstring>
 char* my_strstr(char *s, char *p) {
     /**
      * 在字符串s中搜索字符串p，如果存在就返回第一次找到的地址，不存在就返回空指针(0)。
@@ -49,25 +50,37 @@ char* my_strstr(char *s, char *p) {
 
     // IMPLEMENT YOUR CODE HERE
    
-    if (!*p) {  
-        return s;  
-    }  
-  
-    char *s_temp, *p_temp;  
-    for (; *s; s++) { 
-        s_temp = s;  
-        p_temp = p;    
-    
-        while (*s_temp && *p_temp && (*s_temp == *p_temp)) {  
-            s_temp++;  
-            p_temp++;  
-        }  
-    
-        if (!*p_temp) {  
-            return s;   
-        }    
-    }   
-    return 0;  }
+     if (*p == '\0') {
+        return s;
+    }
+    char *b = s;
+    int c = 0;
+    int d = 0;
+    char *e = p;
+    while (*e!= '\0') {
+        d++;
+        e++;
+    }
+    e = p;
+    while (*b!= '\0') {
+        if (*b == *e) {
+            c++;
+            b++;
+            e++;
+        } else {
+            c = 0;
+            b++;
+            e = p;
+        }
+        if (c == d) {
+            break;
+        }
+    }
+    if (c == d) {
+        return b - d;
+    } else {
+        return NULL;
+    }  }
 
             
 
@@ -246,41 +259,45 @@ void rgb2gray(float *in, float *out, int h, int w) {
 
     
     //5
-#include <algorithm> // For std::min
-#include <cmath>     // For std::floor and std::ceil
 void resize(float *in, float *out, int h, int w, int c, float scale) {
-int new_h = h * scale, new_w = w * scale;
-    int new_h = static_cast<int>(h * scale);
-    int new_w = static_cast<int>(w * scale);
+ 
+ int new_h = h * scale, new_w = w * scale;
+    // IMPLEMENT YOUR CODE HERE
+    for (int i = 0; i < new_w*new_h; i++)
+    {
+        
+        int row = i / new_w;
+       
+        int col = i % new_w;
+       
+        float x = (row+0.5)/scale -0.5;
+        
+        if (x<0) x = 0;
+        if(x >= h-1) x = h-2;
+        
+        int fx = (int)x;
+        x = x-fx;
+        float x1 = 1.0-x;
 
-   
-    for (int y = 0; y < new_h; ++y) {
-        for (int x = 0; x < new_w; ++x) {
-            
-            float x0 = x / scale;
-            float y0 = y / scale;
+       
+        float y = (col +0.5)/scale -0.5;
+      
+        if(y<0)y=0;
+        if(y>=w)y=w-2;
+      
+        int fy = (int)y;
+        y = y-fy;
+        float y1=1.0-y;
 
-            int x1 = static_cast<int>(std::floor(x0));
-            int y1 = static_cast<int>(std::floor(y0));
-            int x2 = std::min(x1 + 1, w - 1);
-            int y2 = std::min(y1 + 1, h - 1);
+       
+        float val_B = (in[fx*w*3+3*fy]*x1*y1+in[(fx+1)*w*3+3*fy]*x*y1+in[fx*w*3+(fy+1)*3]*x1*y+in[(fx+1)*w*3+(fy+1)*3]*x*y);        
+        float val_G = (in[fx*w*3+1+3*fy]*x1*y1+in[(fx+1)*w*3+1+3*fy]*x*y1+in[fx*w*3+1+(fy+1)*3]*x1*y+in[(fx+1)*w*3+1+(fy+1)*3]*x*y);
+        float val_R = (in[fx*w*3+2+3*fy]*x1*y1+in[(fx+1)*w*3+2+3*fy]*x*y1+in[fx*w*3+2+(fy+1)*3]*x1*y+in[(fx+1)*w*3+2+(fy+1)*3]*x*y);
 
-            float dx = x0 - x1;
-            float dy = y0 - y1;
-
-            float p1 = in[(y1 * w + x1) * c];
-            float p2 = in[(y1 * w + x2) * c];
-            float p3 = in[(y2 * w + x1) * c];
-            float p4 = in[(y2 * w + x2) * c];
-
-          
-            for (int i = 0; i < c; ++i) {
-                float q = (p1 * (1 - dx) * (1 - dy)) + (p2 * dx * (1 - dy)) +
-                          (p3 * (1 - dx) * dy) + (p4 * dx * dy);
-                int index = (y * new_w + x) * c + i;
-                out[index] = q;
-            }
-        }
+    
+        out[i*3] = val_B;
+        out[i*3+1] = val_G;
+        out[i*3+2] = val_R;
     }
 }
 
@@ -305,25 +322,33 @@ void hist_eq(float *in, int h, int w) {
 
     // IMPLEMENT YOUR CODE HERE
     
-#include <vector>
+  int hist[256] = {0};
 
-
-    
-    std::vector<int> hist(256, 0);
-    for (int i = 0; i < h * w; ++i) {
-        hist[static_cast<int>(in[i])]++;
+    // (2) 计算直方图
+    for (int i = 0; i < h; ++i) {
+        for (int j = 0; j < w; ++j) {
+            int idx = static_cast<int>(in[i * w + j]);
+            if (idx >= 0 && idx < 256) {
+                hist[idx]++;
+            }
+        }
     }
 
-    std::vector<float> cdf(256, 0);
-    float inv_total = 1.0f / (h * w);
+    int cumulative_hist[256] = {0};
+    int total_pixels = h * w;
+    cumulative_hist[0] = hist[0];
+    for (int i = 1; i < 256; ++i) {
+        cumulative_hist[i] = cumulative_hist[i - 1] + hist[i];
+    }
+
     for (int i = 0; i < 256; ++i) {
-        cdf[i] = (i > 0) ? cdf[i - 1] + hist[i] * inv_total : hist[0] * inv_total;
+        cumulative_hist[i] = static_cast<int>(cumulative_hist[i] * 255.0f / total_pixels);
     }
 
-  
-   /*for (int i = 0; i < h * w; ++i) {
-        int val = static_cast<int>(in[i]);
-        
-        out[i] = cdf[val] * 255.0f;*/
+    for (int i = 0; i < h; ++i) {
+        for (int j = 0; j < w; ++j) {
+            int old_val = static_cast<int>(in[i * w + j]);
+            in[i * w + j] = static_cast<float>(cumulative_hist[old_val]);
+        }
     }
-
+}
